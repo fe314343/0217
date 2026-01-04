@@ -409,15 +409,15 @@
                             <button onClick={toggleMute} className="text-amber-400/50 hover:text-amber-400 transition-colors p-3 bg-red-900/40 rounded-full border border-amber-600/10 active:scale-90">
                                 <Icon name={isMuted ? "volume-x" : "volume-2"} size={22} />
                             </button>
-                            {/* 大 Logo 容器 */}
-                            <div className="w-16 h-16 lg:w-24 lg:h-24 bg-white rounded-[20px] lg:rounded-[28px] overflow-hidden shadow-2xl border-2 border-amber-500 active:scale-95 transition-transform flex items-center justify-center bg-gradient-to-br from-white to-gray-100 p-1">
+                            {/* 大 Logo 容器 - 移除背景與邊框，加大尺寸 */}
+                            <div className="w-20 h-20 lg:w-32 lg:h-32 active:scale-95 transition-transform flex items-center justify-center">
                                 <img 
                                     src="logo-1.png" 
                                     alt="Logo" 
                                     className="w-full h-full object-contain" 
                                     onError={(e) => {
                                         e.target.style.display = 'none';
-                                        e.target.parentElement.innerHTML = '<span class="text-red-800 font-black text-2xl">馬</span>';
+                                        e.target.parentElement.innerHTML = '<span class="text-amber-400 font-black text-3xl drop-shadow-md">馬</span>';
                                     }} 
                                 />
                             </div>
