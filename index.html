@@ -385,6 +385,19 @@
                         <div className="w-10 h-12 lg:w-14 lg:h-16 bg-red-600 rounded-full border-2 border-amber-400 shadow-xl flex items-center justify-center font-black text-amber-200 text-sm lg:text-xl text-center leading-tight">吉<br/>祥</div>
                     </div>
 
+                    {/* 超大 Logo - 放置於右上角，尺寸增加約一倍 */}
+                    <div className="absolute top-2 right-2 lg:top-4 lg:right-8 w-48 h-48 lg:w-80 lg:h-80 z-[60] active:scale-95 transition-transform flex items-center justify-center pointer-events-none">
+                        <img 
+                            src="logo.jpg" 
+                            alt="Logo" 
+                            className="w-full h-full object-contain drop-shadow-2xl" 
+                            onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.parentElement.innerHTML = '<span class="text-amber-400 font-black text-4xl lg:text-6xl drop-shadow-md">馬</span>';
+                            }} 
+                        />
+                    </div>
+
                     <header className="flex flex-col lg:flex-row justify-between items-center px-6 lg:px-10 pt-4 pb-1 shrink-0 relative z-20 gap-4">
                         <div className="flex items-center gap-4 self-start lg:self-center">
                             <div className="bg-amber-500 p-2 rounded-full shadow-[0_0_15px_#fbbf24]"><Icon name="sparkles" size={24} className="text-red-800" /></div>
@@ -395,33 +408,18 @@
                         </div>
                         
                         {!showResults && (
-                            <div className="flex bg-red-900/50 p-1 rounded-xl border border-amber-600/30 w-full lg:w-auto">
+                            <div className="flex bg-red-900/50 p-1 rounded-xl border border-amber-600/30 w-full lg:w-auto items-center">
                                 {[{ id: 'draw', label: '抽獎', icon: 'play' }, { id: 'history', label: '記錄', icon: 'award' }, { id: 'setup', label: '名單', icon: 'users' }].map(tab => (
                                     <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${activeTab === tab.id ? 'bg-amber-500 text-red-900 shadow-lg' : 'text-amber-200/50 hover:text-amber-200'}`}>
                                         <Icon name={tab.icon} size={14} /> {tab.label}
                                     </button>
                                 ))}
+                                {/* 將聲音按鈕移至導覽標籤旁邊（名單那邊） */}
+                                <button onClick={toggleMute} className="ml-2 mr-1 text-amber-400/50 hover:text-amber-400 transition-colors p-2 bg-red-800/40 rounded-lg active:scale-90 border border-amber-600/10">
+                                    <Icon name={isMuted ? "volume-x" : "volume-2"} size={16} />
+                                </button>
                             </div>
                         )}
-
-                        {/* 右上角工具列與大 Logo */}
-                        <div className="flex items-center gap-4 self-end lg:self-center">
-                            <button onClick={toggleMute} className="text-amber-400/50 hover:text-amber-400 transition-colors p-3 bg-red-900/40 rounded-full border border-amber-600/10 active:scale-90">
-                                <Icon name={isMuted ? "volume-x" : "volume-2"} size={22} />
-                            </button>
-                            {/* 大 Logo 容器 - 移除背景與邊框，加大尺寸 */}
-                            <div className="w-20 h-20 lg:w-32 lg:h-32 active:scale-95 transition-transform flex items-center justify-center">
-                                <img 
-                                    src="logo-1.png" 
-                                    alt="Logo" 
-                                    className="w-full h-full object-contain" 
-                                    onError={(e) => {
-                                        e.target.style.display = 'none';
-                                        e.target.parentElement.innerHTML = '<span class="text-amber-400 font-black text-3xl drop-shadow-md">馬</span>';
-                                    }} 
-                                />
-                            </div>
-                        </div>
                     </header>
 
                     <main className="flex-1 flex flex-col justify-center items-center relative z-20 px-4 lg:px-6 overflow-hidden">
@@ -570,7 +568,6 @@
                         </div>
                         
                         <div className="flex items-center gap-2 lg:gap-4">
-                            {/* 移動到右下角的 Cloud Sync */}
                             <div className="flex bg-red-900/80 px-3 py-1.5 rounded-full border border-amber-600/30 items-center gap-2 mr-2">
                                 <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${syncStatus === 'error' ? 'bg-red-500' : 'bg-green-500'}`} />
                                 <span className="text-[8px] font-black text-amber-200/40 uppercase tracking-wider">Cloud Sync</span>
@@ -601,8 +598,8 @@
                                 />
                                 {isPasswordError && <p className="text-red-500 text-[10px] mt-2 font-bold animate-pulse tracking-wide">密碼不正確，請重新輸入</p>}
                                 <div className="grid grid-cols-2 gap-3 mt-8">
-                                    <button onClick={() => setShowPasswordModal(false)} className="bg-gray-100 text-gray-400 py-3 rounded-xl font-black text-sm active:scale-95">取消操作</button>
-                                    <button onClick={handlePasswordConfirm} className="bg-red-700 text-white py-3 rounded-xl font-black text-sm shadow-lg shadow-red-200 active:scale-95">確認授權</button>
+                                    <button onClick={() => setShowPasswordModal(false)} className="bg-gray-100 text-gray-400 py-3 rounded-xl font-black text-sm">取消操作</button>
+                                    <button onClick={handlePasswordConfirm} className="bg-red-700 text-white py-3 rounded-xl font-black text-sm shadow-lg shadow-red-200">確認授權</button>
                                 </div>
                             </div>
                         </div>
@@ -627,7 +624,7 @@
                                         <p className="text-xs font-bold text-gray-700">選擇 <Icon name="plus-square" size={14} className="mx-1 inline"/> 「加入主畫面」</p>
                                     </div>
                                 </div>
-                                <button onClick={() => setShowInstallPrompt(false)} className="w-full bg-red-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-red-200 active:scale-95 transition-transform">我知道了</button>
+                                <button onClick={() => setShowInstallPrompt(false)} className="w-full bg-red-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-red-200 transition-transform">我知道了</button>
                             </div>
                         </div>
                     )}
