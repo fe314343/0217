@@ -2,8 +2,15 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>2026 好運放馬來 - 專業雲端抽獎系統</title>
+    
+    <!-- PWA & Mobile App Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="好運放馬來">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -19,6 +26,8 @@
             margin: 0; padding: 0; overflow: hidden;
             display: flex; align-items: center; justify-content: center;
             height: 100vh; width: 100vw;
+            /* 防止行動裝置下拉重新整理 */
+            overscroll-behavior-y: contain;
         }
 
         .cny-bg {
@@ -26,17 +35,24 @@
             background-repeat: repeat;
         }
 
-        .aspect-video-container {
-            width: 100vw; height: 56.25vw; 
-            max-height: 100vh; max-width: 177.78vh; 
+        /* 響應式容器：電腦端維持比例，手機端全螢幕 */
+        .app-container {
+            width: 100vw; height: 100vh;
             position: relative;
             background-color: rgba(153, 27, 27, 0.93);
-            box-shadow: 0 0 100px rgba(0,0,0,0.8);
-            border: 8px solid #d97706;
-            border-radius: 1.5rem;
-            overflow: hidden;
             display: flex; flex-direction: column;
             z-index: 10;
+            overflow: hidden;
+        }
+
+        @media (min-width: 1024px) {
+            .app-container {
+                width: 100vw; height: 56.25vw; 
+                max-height: 95vh; max-width: 177.78vh; 
+                border: 8px solid #d97706;
+                border-radius: 2rem;
+                box-shadow: 0 0 100px rgba(0,0,0,0.8);
+            }
         }
 
         .animate-rolling { 
@@ -74,6 +90,10 @@
         .gold-glow {
             box-shadow: 0 0 40px rgba(251, 191, 36, 0.5), inset 0 0 30px rgba(255, 255, 255, 0.4);
         }
+
+        /* 安全區域補償 (針對 iPhone) */
+        .safe-pt { padding-top: env(safe-area-inset-top); }
+        .safe-pb { padding-bottom: env(safe-area-inset-bottom); }
     </style>
 </head>
 <body class="cny-bg">
@@ -125,8 +145,19 @@
             const [currentDisplay, setCurrentDisplay] = useState([]); 
             const [selectedPrizeId, setSelectedPrizeId] = useState(1);
             const [syncStatus, setSyncStatus] = useState("loading");
+            const [showInstallPrompt, setShowInstallPrompt] = useState(false);
             
             const rollInterval = useRef(null);
+
+            // 檢查是否已經是以 App 模式開啟
+            useEffect(() => {
+                const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+                if (!isStandalone) {
+                    // 如果不是 App 模式，三秒後顯示提示
+                    const timer = setTimeout(() => setShowInstallPrompt(true), 3000);
+                    return () => clearTimeout(timer);
+                }
+            }, []);
 
             const fetchCloudData = async () => {
                 if (!GAS_API_URL) return;
@@ -223,7 +254,8 @@
             };
 
             return (
-                <div className="aspect-video-container">
+                <div className="app-container safe-pt safe-pb">
+                    {/* 背景燈籠 - 僅電腦端 */}
                     <div className="absolute top-0 left-10 lantern-swing hidden lg:block pointer-events-none z-0">
                         <div className="w-1 h-16 bg-amber-500 mx-auto"></div>
                         <div className="w-14 h-16 bg-red-600 rounded-full border-2 border-amber-400 shadow-xl flex items-center justify-center font-black text-amber-200 text-xl text-center leading-tight">春<br/>福</div>
@@ -233,19 +265,19 @@
                         <div className="w-14 h-16 bg-red-600 rounded-full border-2 border-amber-400 shadow-xl flex items-center justify-center font-black text-amber-200 text-xl text-center leading-tight">吉<br/>祥</div>
                     </div>
 
-                    <header className="flex justify-between items-center px-10 pt-4 pb-1 shrink-0 relative z-20">
+                    <header className="flex flex-col lg:flex-row justify-between items-center px-6 lg:px-10 pt-4 pb-1 shrink-0 relative z-20 gap-4">
                         <div className="flex items-center gap-4">
                             <div className="bg-amber-500 p-2 rounded-full shadow-[0_0_15px_#fbbf24]"><Icon name="sparkles" size={24} className="text-red-800" /></div>
                             <div>
-                                <h1 className="text-3xl font-black tracking-tighter text-amber-400 drop-shadow-lg leading-tight">2026 好運放馬來</h1>
+                                <h1 className="text-2xl lg:text-3xl font-black tracking-tighter text-amber-400 drop-shadow-lg leading-tight">2026 好運放馬來</h1>
                                 <p className="text-amber-200/60 text-[10px] font-bold tracking-widest uppercase leading-none">Double Verified Cloud Lottery</p>
                             </div>
                         </div>
                         
                         {!showResults && (
-                            <div className="flex bg-red-900/50 p-1 rounded-xl border border-amber-600/30">
+                            <div className="flex bg-red-900/50 p-1 rounded-xl border border-amber-600/30 w-full lg:w-auto">
                                 {[{ id: 'draw', label: '抽獎', icon: 'play' }, { id: 'history', label: '記錄', icon: 'award' }, { id: 'setup', label: '名單', icon: 'users' }].map(tab => (
-                                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-black transition-all ${activeTab === tab.id ? 'bg-amber-500 text-red-900 shadow-lg' : 'text-amber-200/50 hover:text-amber-200'}`}>
+                                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${activeTab === tab.id ? 'bg-amber-500 text-red-900 shadow-lg' : 'text-amber-200/50 hover:text-amber-200'}`}>
                                         <Icon name={tab.icon} size={14} /> {tab.label}
                                     </button>
                                 ))}
@@ -253,93 +285,91 @@
                         )}
                     </header>
 
-                    <main className="flex-1 flex flex-col justify-center items-center relative z-20 px-6 overflow-hidden">
+                    <main className="flex-1 flex flex-col justify-center items-center relative z-20 px-4 lg:px-6 overflow-hidden">
                         {syncStatus === "loading" ? (
                             <div className="flex flex-col items-center gap-4">
                                 <div className="animate-spin text-amber-400"><Icon name="refresh-cw" size={48} /></div>
-                                <p className="text-xl font-black text-amber-200 animate-pulse tracking-widest">同步後台數據中...</p>
+                                <p className="text-xl font-black text-amber-200 animate-pulse tracking-widest">同步數據中...</p>
                             </div>
                         ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center">
                                 {activeTab === 'draw' && (
                                     <div className="w-full h-full flex flex-col items-center justify-center">
                                         {!showResults ? (
-                                            <div className="flex flex-col items-center justify-center h-full gap-8 animate-in fade-in scale-in">
-                                                <div className="flex gap-3 flex-wrap justify-center max-w-5xl">
+                                            <div className="flex flex-col items-center justify-center h-full gap-6 lg:gap-8 animate-in fade-in scale-in w-full overflow-y-auto custom-scrollbar py-4">
+                                                <div className="flex gap-2 lg:gap-3 flex-wrap justify-center max-w-5xl">
                                                     {prizes.map(p => (
                                                         <button 
                                                             key={p.id} onClick={() => setSelectedPrizeId(p.id)} disabled={p.remaining <= 0}
-                                                            className={`relative px-6 py-4 rounded-b-xl border-t-4 transition-all flex flex-col items-center min-w-[140px] ${
-                                                                selectedPrizeId === p.id ? 'bg-amber-500 border-white text-red-900 scale-110 shadow-2xl z-10' 
+                                                            className={`relative px-4 py-3 lg:px-6 lg:py-4 rounded-b-xl border-t-4 transition-all flex flex-col items-center min-w-[100px] lg:min-w-[140px] ${
+                                                                selectedPrizeId === p.id ? 'bg-amber-500 border-white text-red-900 scale-105 lg:scale-110 shadow-2xl z-10' 
                                                                 : p.remaining <= 0 ? 'bg-red-950 border-gray-600 text-gray-500 opacity-40 grayscale'
-                                                                : 'bg-red-900/60 border-amber-600/50 text-amber-500 hover:bg-red-800/80 hover:-translate-y-1'
+                                                                : 'bg-red-900/60 border-amber-600/50 text-amber-500'
                                                             }`}
                                                         >
-                                                            <span className="text-sm font-black tracking-wider">{p.name}</span>
-                                                            <span className="text-[10px] font-bold opacity-80 mt-1">{p.remaining <= 0 ? '已抽完' : `剩 ${p.remaining} 位`}</span>
+                                                            <span className="text-xs lg:text-sm font-black tracking-wider">{p.name}</span>
+                                                            <span className="text-[10px] font-bold opacity-80 mt-1">{p.remaining <= 0 ? '已抽完' : `剩 ${p.remaining}`}</span>
                                                         </button>
                                                     ))}
                                                 </div>
 
                                                 <button 
                                                     onClick={startDraw} disabled={prizes.find(px => px.id === selectedPrizeId)?.remaining <= 0}
-                                                    className="group relative w-56 h-56 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex flex-col items-center justify-center shadow-[0_0_50px_rgba(251,191,36,0.4)] border-8 border-white/20 active:scale-95 transition-all hover:brightness-110"
+                                                    className="group relative w-48 h-48 lg:w-56 lg:h-56 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex flex-col items-center justify-center shadow-[0_0_50px_rgba(251,191,36,0.4)] border-8 border-white/20 active:scale-95 transition-all"
                                                 >
                                                     <div className="absolute inset-0 rounded-full animate-ping bg-amber-400/20 group-hover:hidden"></div>
                                                     <Icon name="gift" size={40} className="text-red-800 mb-2" />
-                                                    <span className="text-2xl font-black text-red-900 tracking-widest">開始抽獎</span>
+                                                    <span className="text-xl lg:text-2xl font-black text-red-900 tracking-widest">開始抽獎</span>
                                                     <span className="text-[10px] font-bold text-red-800/60 uppercase">抽取 {prizes.find(p=>p.id===selectedPrizeId)?.batch} 人</span>
                                                 </button>
                                             </div>
                                         ) : (
                                             <div className="w-full h-full flex flex-col items-center justify-center py-2 animate-in zoom-in duration-300">
-                                                <div className="w-full h-[98%] bg-red-900/50 backdrop-blur-2xl rounded-[40px] p-4 border-2 border-amber-500/30 flex flex-col shadow-2xl relative overflow-hidden">
+                                                <div className="w-full h-[98%] bg-red-900/50 backdrop-blur-2xl rounded-[30px] lg:rounded-[40px] p-4 border-2 border-amber-500/30 flex flex-col shadow-2xl relative overflow-hidden">
                                                     
-                                                    <div className="flex items-center justify-center relative mb-2 h-14 shrink-0 px-4">
+                                                    <div className="flex items-center justify-center relative mb-2 h-14 shrink-0 px-2 lg:px-4">
                                                         <div className="flex flex-col items-center">
-                                                            <h3 className="text-amber-400 font-black tracking-[0.4em] text-2xl uppercase drop-shadow-md">
-                                                                {isRolling ? "✦ 吉祥高照 · 抽獎中 ✦" : "✦ 鴻運當頭 · 恭喜獲獎 ✦"}
+                                                            <h3 className="text-amber-400 font-black tracking-[0.2em] lg:tracking-[0.4em] text-lg lg:text-2xl uppercase drop-shadow-md text-center">
+                                                                {isRolling ? "✦ 抽獎中 ✦" : "✦ 恭喜獲獎 ✦"}
                                                             </h3>
                                                         </div>
                                                         
                                                         {!isRolling && (
                                                             <button 
                                                                 onClick={resetToSelection}
-                                                                className="absolute right-4 bg-white/95 text-red-900 px-4 py-1.5 rounded-full font-black text-xs shadow-xl hover:bg-amber-100 transition-all flex items-center gap-2 active:scale-95 border-2 border-amber-500 z-50"
+                                                                className="absolute right-0 lg:right-4 bg-white/95 text-red-900 px-3 py-1.5 rounded-full font-black text-[10px] lg:text-xs shadow-xl flex items-center gap-1 border-2 border-amber-500 z-50"
                                                             >
-                                                                <Icon name="rotate-ccw" size={14} /> 抽下一輪
+                                                                <Icon name="rotate-ccw" size={12} /> 下一輪
                                                             </button>
                                                         )}
                                                     </div>
 
                                                     <div className="flex justify-center mb-2 shrink-0">
-                                                        <div className="bg-amber-500 text-red-900 px-12 py-1 rounded-full text-sm font-black shadow-lg border border-white/30 tracking-widest">
+                                                        <div className="bg-amber-500 text-red-900 px-8 lg:px-12 py-1 rounded-full text-xs lg:text-sm font-black shadow-lg border border-white/30 tracking-widest">
                                                             {prizes.find(p=>p.id===selectedPrizeId)?.name}
                                                         </div>
                                                     </div>
 
                                                     <div className="flex-1 flex items-center justify-center overflow-hidden w-full max-w-[98%] mx-auto">
                                                         {currentDisplay.length === 1 ? (
-                                                            /* 特獎、頭獎等大獎：畫面優化為適中大小 */
                                                             <div className={`
                                                                 w-full max-w-xl bg-gradient-to-br from-amber-300 via-amber-500 to-amber-600 
-                                                                text-red-900 font-black rounded-[40px] gold-glow border-4 border-white/80
+                                                                text-red-900 font-black rounded-[30px] lg:rounded-[40px] gold-glow border-4 border-white/80
                                                                 flex items-center justify-center transition-all duration-300
                                                                 ${isRolling ? 'animate-rolling blur-[1px]' : 'bounce-in'}
-                                                                h-[65%] text-8xl md:text-9xl leading-none drop-shadow-[0_15px_25px_rgba(0,0,0,0.4)]
+                                                                h-[60%] text-6xl lg:text-9xl leading-none drop-shadow-2xl
                                                             `}>
                                                                 {currentDisplay[0]}
                                                             </div>
                                                         ) : (
-                                                            /* 百人獎：優化為 5 欄 4 行 */
-                                                            <div className="grid gap-3 w-full h-full p-2 grid-cols-5 items-center justify-center auto-rows-fr">
+                                                            <div className="grid gap-2 w-full h-full p-1 grid-cols-4 lg:grid-cols-5 items-center justify-center auto-rows-fr">
                                                                 {currentDisplay.map((id, idx) => (
                                                                     <div key={idx} className={`
-                                                                        bg-gradient-to-b from-amber-300 to-amber-500 text-red-900 font-black rounded-2xl 
-                                                                        flex items-center justify-center shadow-lg border-2 border-white/60 
+                                                                        bg-gradient-to-b from-amber-300 to-amber-500 text-red-900 font-black rounded-xl 
+                                                                        flex items-center justify-center shadow-lg border border-white/60 
                                                                         transform transition-all duration-300
                                                                         ${isRolling ? 'animate-rolling blur-[0.5px] opacity-70' : 'bounce-in'}
-                                                                        text-xl lg:text-3xl h-[85%] w-full
+                                                                        text-sm lg:text-2xl h-[85%] w-full
                                                                     `}>
                                                                         {id}
                                                                     </div>
@@ -347,12 +377,6 @@
                                                             </div>
                                                         )}
                                                     </div>
-                                                    
-                                                    {isRolling && (
-                                                        <div className="mt-2 text-center text-amber-200/40 font-bold text-[10px] animate-pulse tracking-[1em] shrink-0 uppercase">
-                                                            Filtering Candidates...
-                                                        </div>
-                                                    )}
                                                 </div>
                                             </div>
                                         )}
@@ -360,18 +384,18 @@
                                 )}
 
                                 {activeTab === 'history' && (
-                                    <div className="w-full max-w-4xl bg-red-900/30 backdrop-blur-sm rounded-[30px] p-6 border border-amber-600/30 flex flex-col h-[75%] shadow-2xl">
+                                    <div className="w-full max-w-4xl bg-red-900/30 backdrop-blur-sm rounded-[30px] p-4 lg:p-6 border border-amber-600/30 flex flex-col h-[80%] shadow-2xl">
                                         <div className="flex justify-between items-center mb-4 pb-2 border-b border-amber-600/20">
-                                            <h2 className="text-xl font-black text-amber-400 flex items-center gap-2"><Icon name="medal" size={20} /> 2026 鴻運榜</h2>
+                                            <h2 className="text-lg lg:text-xl font-black text-amber-400 flex items-center gap-2"><Icon name="medal" size={20} /> 2026 鴻運榜</h2>
                                         </div>
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 overflow-y-auto pr-2 custom-scrollbar">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-3 overflow-y-auto pr-2 custom-scrollbar">
                                             {winners.map((w, i) => (
-                                                <div key={i} className="bg-red-800/50 p-4 rounded-xl border border-amber-600/10 flex items-center justify-between">
+                                                <div key={i} className="bg-red-800/50 p-3 lg:p-4 rounded-xl border border-amber-600/10 flex items-center justify-between">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-amber-700 text-red-900 flex items-center justify-center font-black text-xs shadow">{w.id.slice(-4)}</div>
-                                                        <div className="font-black text-xs text-white truncate w-16">{w.name}</div>
+                                                        <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-lg bg-gradient-to-br from-amber-500 to-amber-700 text-red-900 flex items-center justify-center font-black text-[10px] lg:text-xs shadow">{String(w.id).slice(-4)}</div>
+                                                        <div className="font-black text-xs text-white truncate w-16 lg:w-20">{w.name}</div>
                                                     </div>
-                                                    <div className="bg-red-600 text-amber-100 px-2 py-1 rounded text-[8px] font-black">{w.prizeName.slice(0,10)}</div>
+                                                    <div className="bg-red-600 text-amber-100 px-2 py-1 rounded text-[8px] font-black">{w.prizeName}</div>
                                                 </div>
                                             ))}
                                         </div>
@@ -379,9 +403,9 @@
                                 )}
 
                                 {activeTab === 'setup' && (
-                                    <div className="w-full max-w-4xl bg-red-900/30 rounded-[30px] p-6 border border-amber-600/30 flex flex-col h-[75%]">
-                                        <h2 className="text-xl font-black text-amber-400 mb-4 flex items-center gap-2"><Icon name="users" /> 參賽名單庫</h2>
-                                        <div className="grid grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-2 overflow-y-auto pr-2 custom-scrollbar">
+                                    <div className="w-full max-w-4xl bg-red-900/30 rounded-[30px] p-4 lg:p-6 border border-amber-600/30 flex flex-col h-[80%]">
+                                        <h2 className="text-lg lg:text-xl font-black text-amber-400 mb-4 flex items-center gap-2"><Icon name="users" /> 參賽名單</h2>
+                                        <div className="grid grid-cols-4 md:grid-cols-8 lg:grid-cols-10 gap-2 overflow-y-auto pr-2 custom-scrollbar">
                                             {participants.map((p, i) => {
                                                 const isWon = winners.some(w => String(w.id) === String(p.id));
                                                 return (
@@ -397,26 +421,57 @@
                         )}
                     </main>
 
-                    <footer className="shrink-0 flex justify-between items-center px-10 border-t border-amber-600/10 py-4 relative z-20">
-                        <div className="flex items-center gap-6">
-                            <div className="flex flex-col"><span className="text-[8px] text-amber-200/40 font-black uppercase mb-1">Total</span><span className="text-lg font-black text-white leading-none">{participants.length}</span></div>
-                            <div className="w-px h-6 bg-amber-600/20"></div>
-                            <div className="flex flex-col"><span className="text-[8px] text-amber-200/40 font-black uppercase mb-1 text-amber-500/80">Drawn</span><span className="text-lg font-black text-amber-400 leading-none">{totalWonCount}</span></div>
-                            <div className="w-px h-6 bg-amber-600/20"></div>
-                            <div className="flex flex-col"><span className="text-[8px] text-amber-200/40 font-black uppercase mb-1">Remaining</span><span className="text-lg font-black text-white leading-none">{participants.length - totalWonCount}</span></div>
+                    <footer className="shrink-0 flex justify-between items-center px-6 lg:px-10 border-t border-amber-600/10 py-3 lg:py-4 relative z-20 bg-red-900/40">
+                        <div className="flex items-center gap-4 lg:gap-6">
+                            <div className="flex flex-col"><span className="text-[7px] lg:text-[8px] text-amber-200/40 font-black uppercase">Total</span><span className="text-sm lg:text-lg font-black text-white">{participants.length}</span></div>
+                            <div className="flex flex-col"><span className="text-[7px] lg:text-[8px] text-amber-500/80 font-black uppercase">Drawn</span><span className="text-sm lg:text-lg font-black text-amber-400">{totalWonCount}</span></div>
                         </div>
                         
-                        <div className="flex items-center gap-4">
-                            <button onClick={fetchCloudData} className="flex items-center gap-2 bg-amber-600/20 hover:bg-amber-600/40 px-3 py-1.5 rounded-lg border border-amber-600/30 transition-all active:scale-95">
+                        <div className="flex items-center gap-2 lg:gap-4">
+                            <button onClick={fetchCloudData} className="flex items-center gap-1 bg-amber-600/20 px-3 py-1.5 rounded-lg border border-amber-600/30">
                                 <Icon name="rotate-cw" size={12} className="text-amber-400" />
-                                <span className="text-[10px] font-black text-amber-200">刷新數據</span>
+                                <span className="hidden lg:inline text-[10px] font-black text-amber-200">刷新</span>
                             </button>
-                            <div className="bg-red-900/80 px-4 py-1.5 rounded-full border border-amber-600/30 flex items-center gap-2">
-                                <div className={`w-1.5 h-1.5 rounded-full animate-pulse shadow-[0_0_5px] ${syncStatus === 'error' ? 'bg-red-500 shadow-red-500' : 'bg-green-500 shadow-green-500'}`} />
-                                <span className="text-[8px] font-black text-amber-200/40 uppercase tracking-[0.1em]">Cloud Sync</span>
+                            <div className="hidden lg:flex bg-red-900/80 px-4 py-1.5 rounded-full border border-amber-600/30 items-center gap-2">
+                                <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${syncStatus === 'error' ? 'bg-red-500' : 'bg-green-500'}`} />
+                                <span className="text-[8px] font-black text-amber-200/40 uppercase">Cloud Sync</span>
                             </div>
                         </div>
                     </footer>
+
+                    {/* App 安裝提示彈窗 */}
+                    {showInstallPrompt && (
+                        <div className="fixed inset-0 z-[100] flex items-end lg:items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+                            <div className="bg-white rounded-t-[30px] lg:rounded-[30px] w-full max-w-md p-6 text-gray-900 shadow-2xl animate-in slide-in-from-bottom duration-500">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="bg-amber-100 p-3 rounded-2xl"><Icon name="mobile" size={32} className="text-amber-600" /></div>
+                                    <button onClick={() => setShowInstallPrompt(false)} className="text-gray-400"><Icon name="x" size={24} /></button>
+                                </div>
+                                <h4 className="text-xl font-black mb-2 text-red-900">將抽獎加入主畫面</h4>
+                                <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+                                    像使用應用程式一樣開啟「好運放馬來」！享受全螢幕體驗並獲得更快的啟動速度。
+                                </p>
+                                
+                                <div className="space-y-4 mb-8">
+                                    <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                        <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold">1</div>
+                                        <p className="text-xs font-bold text-gray-700">點擊瀏覽器下方的 <Icon name="share" size={14} className="mx-1 inline"/> 「分享」按鈕</p>
+                                    </div>
+                                    <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                        <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold">2</div>
+                                        <p className="text-xs font-bold text-gray-700">選擇 <Icon name="plus-square" size={14} className="mx-1 inline"/> 「加入主畫面」</p>
+                                    </div>
+                                </div>
+
+                                <button 
+                                    onClick={() => setShowInstallPrompt(false)}
+                                    className="w-full bg-red-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-red-200 active:scale-95 transition-transform"
+                                >
+                                    我知道了
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         };
