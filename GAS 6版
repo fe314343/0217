@@ -1,0 +1,65 @@
+// Google Apps Script (Code.gs)
+
+function doGet() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // 1. 抓取【原始資料】工作表
+    const sourceSheet = ss.getSheetByName("原始資料");
+    if (!sourceSheet) return errorResponse("找不到名為『原始資料』的工作表");
+    const sourceData = sourceSheet.getDataRange().getValues();
+    const participants = sourceData.slice(1).map(row => ({
+      id: String(row[0]),
+      name: String(row[1]),
+      phone: String(row[2])
+    })).filter(p => p.id && p.id !== "undefined");
+
+    // 2. 抓取【Winners】工作表並統計獎項進度
+    const winnersSheet = ss.getSheetByName("Winners");
+    let wonIds = [];
+    let prizeCounts = {}; // 用來紀錄每個獎項抽了幾次
+    
+    if (winnersSheet) {
+      const winnersData = winnersSheet.getDataRange().getValues();
+      if (winnersData.length > 1) {
+        winnersData.slice(1).forEach(row => {
+          const id = String(row[0]);
+          const prizeName = String(row[3]); // 假設第四欄 (D欄) 是獎項名稱
+          
+          wonIds.push(id);
+          // 統計獎項數量
+          prizeCounts[prizeName] = (prizeCounts[prizeName] || 0) + 1;
+        });
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({
+      participants: participants,
+      wonIds: wonIds,
+      prizeCounts: prizeCounts // 將統計結果回傳給前端
+    })).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (e) {
+    return errorResponse(e.toString());
+  }
+}
+
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let winnersSheet = ss.getSheetByName("Winners");
+    if (!winnersSheet) {
+      winnersSheet = ss.insertSheet("Winners");
+      winnersSheet.appendRow(["編號", "姓名", "電話", "獎項", "抽中時間"]);
+    }
+    winnersSheet.appendRow([data.id, data.name, data.phone, data.prizeName, data.time]);
+    return ContentService.createTextOutput(JSON.stringify({ result: "success" })).setMimeType(ContentService.MimeType.JSON);
+  } catch (e) {
+    return errorResponse(e.toString());
+  }
+}
+
+function errorResponse(msg) {
+  return ContentService.createTextOutput(JSON.stringify({ error: msg })).setMimeType(ContentService.MimeType.JSON);
+}
