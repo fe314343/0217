@@ -114,16 +114,22 @@
         // ============================================================
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwP9BgU-84FT9rS-ASNDHAiOd20LU7XsPt4jX9-E7J0yqAfvjp5VfX-fZ4K6cnUa669pw/exec"; 
         
-        // 🔒 大獎抽獎密碼 (特、頭、貳獎)
+        // 🔒 進入大獎專區授權密碼
         const MASTER_PASSWORD = "2026"; 
 
+        // 🧧 獎項清單重組
         const INITIAL_PRIZES = [
-            { id: 1, name: '🧧 特獎', count: 1, batch: 1, isMajor: true },
-            { id: 2, name: '🧧 頭獎', count: 2, batch: 1, isMajor: true },
-            { id: 3, name: '🧧 貳獎', count: 5, batch: 1, isMajor: true },
-            { id: 4, name: '🧧 第一次 100人', count: 100, batch: 20, isMajor: false },
-            { id: 5, name: '🧧 第二次 100人', count: 100, batch: 20, isMajor: false },
-            { id: 6, name: '🧧 第三次 100人', count: 100, batch: 20, isMajor: false }
+            // 大獎專區 (type: major)
+            { id: 1, name: '🧧 頭獎', count: 1, batch: 1, isMajor: true, type: 'major' },
+            { id: 2, name: '🧧 二獎', count: 1, batch: 1, isMajor: true, type: 'major' },
+            { id: 3, name: '🧧 三獎', count: 1, batch: 1, isMajor: true, type: 'major' },
+            { id: 4, name: '🧧 四獎', count: 2, batch: 1, isMajor: true, type: 'major' },
+            { id: 5, name: '🧧 五獎', count: 6, batch: 1, isMajor: true, type: 'major' },
+            { id: 6, name: '🧧 六獎', count: 1, batch: 1, isMajor: true, type: 'major' },
+            // 普通抽獎 (type: normal)
+            { id: 7, name: '🧧 第一次 100人', count: 100, batch: 20, isMajor: false, type: 'normal' },
+            { id: 8, name: '🧧 第二次 100人', count: 100, batch: 20, isMajor: false, type: 'normal' },
+            { id: 9, name: '🧧 第三次 100人', count: 100, batch: 20, isMajor: false, type: 'normal' }
         ];
         // ============================================================
 
@@ -227,7 +233,7 @@
         };
 
         const App = () => {
-            const [activeTab, setActiveTab] = useState('draw'); 
+            const [activeTab, setActiveTab] = useState('normal_draw'); // 初始設為普通抽獎
             const [participants, setParticipants] = useState([]);
             const [prizes, setPrizes] = useState(INITIAL_PRIZES.map(p => ({ ...p, remaining: p.count })));
             const [winners, setWinners] = useState([]);
@@ -235,11 +241,13 @@
             const [isRolling, setIsRolling] = useState(false);
             const [showResults, setShowResults] = useState(false); 
             const [currentDisplay, setCurrentDisplay] = useState([]); 
-            const [selectedPrizeId, setSelectedPrizeId] = useState(1);
+            const [selectedPrizeId, setSelectedPrizeId] = useState(7); // 預設選中第一個普通獎
             const [syncStatus, setSyncStatus] = useState("loading");
             const [showInstallPrompt, setShowInstallPrompt] = useState(false);
             const [isMuted, setIsMuted] = useState(false);
             
+            // 解鎖狀態
+            const [isMajorUnlocked, setIsMajorUnlocked] = useState(false);
             const [showPasswordModal, setShowPasswordModal] = useState(false);
             const [passwordInput, setPasswordInput] = useState("");
             const [isPasswordError, setIsPasswordError] = useState(false);
@@ -296,22 +304,28 @@
                 SoundEngine.isMuted = newMute;
             };
 
-            const handleStartClick = () => {
-                SoundEngine.init();
-                const prize = prizes.find(p => p.id === selectedPrizeId);
-                if (prize && prize.isMajor) {
+            // 處理分頁切換
+            const handleTabSwitch = (targetTab) => {
+                if (targetTab === 'major_draw' && !isMajorUnlocked) {
                     setShowPasswordModal(true);
                     setPasswordInput("");
                     setIsPasswordError(false);
                 } else {
-                    executeDraw();
+                    setActiveTab(targetTab);
+                    // 切換分區後自動選擇該區第一個還有餘額的獎項
+                    const prizeType = targetTab === 'major_draw' ? 'major' : 'normal';
+                    const firstAvail = prizes.find(p => p.type === prizeType && p.remaining > 0);
+                    if (firstAvail) setSelectedPrizeId(firstAvail.id);
                 }
             };
 
             const handlePasswordConfirm = () => {
                 if (passwordInput === MASTER_PASSWORD) {
+                    setIsMajorUnlocked(true);
                     setShowPasswordModal(false);
-                    executeDraw();
+                    setActiveTab('major_draw');
+                    const firstMajor = prizes.find(p => p.type === 'major' && p.remaining > 0);
+                    if (firstMajor) setSelectedPrizeId(firstMajor.id);
                 } else {
                     setIsPasswordError(true);
                     SoundEngine.playError();
@@ -413,20 +427,19 @@
                         {/* 導覽標籤組 */}
                         {!showResults && (
                             <div className="flex bg-red-900/50 p-1 rounded-xl border border-amber-600/30 items-center mx-auto shadow-xl relative z-30">
-                                {[{ id: 'draw', label: '抽獎', icon: 'play' }, { id: 'history', label: '記錄', icon: 'award' }, { id: 'setup', label: '名單', icon: 'users' }].map(tab => (
-                                    <button 
-                                        key={tab.id} 
-                                        onClick={() => setActiveTab(tab.id)} 
-                                        className={`flex items-center justify-center gap-2 px-4 py-2 lg:px-6 rounded-lg text-xs lg:text-sm font-black transition-all ${activeTab === tab.id ? 'bg-amber-500 text-red-900 shadow-lg scale-105' : 'text-amber-200/50 hover:text-amber-200'}`}
-                                    >
-                                        <Icon name={tab.icon} size={14} /> {tab.label}
-                                    </button>
-                                ))}
-                                <button 
-                                    onClick={toggleMute} 
-                                    className="ml-2 mr-1 text-amber-400/50 hover:text-amber-400 transition-colors p-2 bg-red-800/40 rounded-lg active:scale-90 border border-amber-600/10 shadow-inner"
-                                    title="切換靜音"
-                                >
+                                <button onClick={() => handleTabSwitch('normal_draw')} className={`flex items-center gap-2 px-4 py-2 lg:px-6 rounded-lg text-xs lg:text-sm font-black transition-all ${activeTab === 'normal_draw' ? 'bg-amber-500 text-red-900 shadow-lg scale-105' : 'text-amber-200/50 hover:text-amber-200'}`}>
+                                    <Icon name="play" size={14} /> 普通抽獎
+                                </button>
+                                <button onClick={() => handleTabSwitch('major_draw')} className={`flex items-center gap-2 px-4 py-2 lg:px-6 rounded-lg text-xs lg:text-sm font-black transition-all ${activeTab === 'major_draw' ? 'bg-gradient-to-r from-amber-400 to-amber-600 text-red-900 shadow-lg scale-105' : 'text-amber-200/50 hover:text-amber-200'}`}>
+                                    <Icon name={isMajorUnlocked ? "award" : "lock"} size={14} /> 大獎專區
+                                </button>
+                                <button onClick={() => setActiveTab('history')} className={`flex items-center gap-2 px-4 py-2 lg:px-6 rounded-lg text-xs lg:text-sm font-black transition-all ${activeTab === 'history' ? 'bg-amber-500 text-red-900 shadow-lg scale-105' : 'text-amber-200/50 hover:text-amber-200'}`}>
+                                    <Icon name="medal" size={14} /> 記錄
+                                </button>
+                                <button onClick={() => setActiveTab('setup')} className={`flex items-center gap-2 px-4 py-2 lg:px-6 rounded-lg text-xs lg:text-sm font-black transition-all ${activeTab === 'setup' ? 'bg-amber-500 text-red-900 shadow-lg scale-105' : 'text-amber-200/50 hover:text-amber-200'}`}>
+                                    <Icon name="users" size={14} /> 名單
+                                </button>
+                                <button onClick={toggleMute} className="ml-2 mr-1 text-amber-400/50 hover:text-amber-400 transition-colors p-2 bg-red-800/40 rounded-lg active:scale-90 border border-amber-600/10 shadow-inner">
                                     <Icon name={isMuted ? "volume-x" : "volume-2"} size={16} />
                                 </button>
                             </div>
@@ -441,12 +454,12 @@
                             </div>
                         ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center">
-                                {activeTab === 'draw' && (
+                                {(activeTab === 'normal_draw' || activeTab === 'major_draw') && (
                                     <div className="w-full h-full flex flex-col items-center justify-center">
                                         {!showResults ? (
                                             <div className="flex flex-col items-center justify-center h-full gap-6 lg:gap-8 animate-in fade-in scale-in w-full overflow-y-auto custom-scrollbar py-4">
                                                 <div className="flex gap-2 lg:gap-3 flex-wrap justify-center max-w-5xl">
-                                                    {prizes.map(p => (
+                                                    {prizes.filter(p => p.type === (activeTab === 'major_draw' ? 'major' : 'normal')).map(p => (
                                                         <button 
                                                             key={p.id} onClick={() => setSelectedPrizeId(p.id)} disabled={p.remaining <= 0}
                                                             className={`relative px-4 py-3 lg:px-6 lg:py-4 rounded-b-xl border-t-4 transition-all flex flex-col items-center min-w-[100px] lg:min-w-[140px] ${
@@ -455,7 +468,6 @@
                                                                 : 'bg-red-900/60 border-amber-600/50 text-amber-500'
                                                             }`}
                                                         >
-                                                            {p.isMajor && <div className="absolute -top-2 right-0 bg-red-600 text-white text-[8px] px-1 rounded-sm shadow-sm flex items-center gap-0.5"><Icon name="lock" size={8} /> 需驗證</div>}
                                                             <span className="text-xs lg:text-sm font-black tracking-wider">{p.name}</span>
                                                             <span className="text-[10px] font-bold opacity-80 mt-1">{p.remaining <= 0 ? '已抽完' : `剩 ${p.remaining}`}</span>
                                                         </button>
@@ -463,7 +475,7 @@
                                                 </div>
 
                                                 <button 
-                                                    onClick={handleStartClick} disabled={prizes.find(px => px.id === selectedPrizeId)?.remaining <= 0}
+                                                    onClick={executeDraw} disabled={prizes.find(px => px.id === selectedPrizeId)?.remaining <= 0}
                                                     className="group relative w-48 h-48 lg:w-56 lg:h-56 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex flex-col items-center justify-center shadow-[0_0_50px_rgba(251,191,36,0.4)] border-8 border-white/20 active:scale-95 transition-all"
                                                 >
                                                     <div className="absolute inset-0 rounded-full animate-ping bg-amber-400/20 group-hover:hidden"></div>
@@ -480,10 +492,7 @@
                                                             {isRolling ? "✦ 抽獎中 ✦" : "✦ 恭喜獲獎 ✦"}
                                                         </h3>
                                                         {!isRolling && (
-                                                            <button 
-                                                                onClick={resetToSelection}
-                                                                className="absolute right-0 lg:right-4 bg-white/95 text-red-900 px-3 py-1.5 rounded-full font-black text-[10px] lg:text-xs shadow-xl flex items-center gap-1 border-2 border-amber-500 z-[70] active:scale-95"
-                                                            >
+                                                            <button onClick={resetToSelection} className="absolute right-0 lg:right-4 bg-white/95 text-red-900 px-3 py-1.5 rounded-full font-black text-[10px] lg:text-xs shadow-xl flex items-center gap-1 border-2 border-amber-500 z-[70] active:scale-95">
                                                                 <Icon name="rotate-ccw" size={12} /> 下一輪
                                                             </button>
                                                         )}
@@ -495,18 +504,11 @@
                                                     </div>
                                                     <div className="flex-1 flex items-center justify-center overflow-hidden w-full max-w-[98%] mx-auto">
                                                         {currentDisplay.length === 1 ? (
-                                                            <div className={`
-                                                                w-full max-w-xl bg-gradient-to-br from-amber-300 via-amber-500 to-amber-600 
-                                                                text-red-900 font-black rounded-[30px] lg:rounded-[40px] gold-glow border-4 border-white/80
-                                                                flex items-center justify-center transition-all duration-300
-                                                                ${isRolling ? 'animate-rolling blur-[1px]' : 'bounce-in'}
-                                                                h-[60%] flex-col drop-shadow-2xl
-                                                            `}>
-                                                                {/* 停止滾動後，如果是大獎則顯示 ID + 姓名 */}
+                                                            <div className={`w-full max-w-xl bg-gradient-to-br from-amber-300 via-amber-500 to-amber-600 text-red-900 font-black rounded-[30px] lg:rounded-[40px] gold-glow border-4 border-white/80 flex items-center justify-center transition-all duration-300 ${isRolling ? 'animate-rolling blur-[1px]' : 'bounce-in'} h-[60%] flex-col drop-shadow-2xl`}>
                                                                 {!isRolling && prizes.find(p => p.id === selectedPrizeId)?.isMajor ? (
                                                                     <React.Fragment>
                                                                         <div className="text-4xl lg:text-5xl opacity-40 mb-4 font-bold tracking-widest">#{currentDisplay[0]}</div>
-                                                                        <div className="text-7xl lg:text-[10rem] leading-none">
+                                                                        <div className="text-7xl lg:text-[10rem] leading-none px-4 text-center">
                                                                             {participants.find(p => String(p.id) === String(currentDisplay[0]))?.name || "未知"}
                                                                         </div>
                                                                     </React.Fragment>
@@ -520,13 +522,7 @@
                                                                     const person = participants.find(p => String(p.id) === String(id));
                                                                     const isMajor = prizes.find(p => p.id === selectedPrizeId)?.isMajor;
                                                                     return (
-                                                                        <div key={idx} className={`
-                                                                            bg-gradient-to-b from-amber-300 to-amber-500 text-red-900 font-black rounded-xl 
-                                                                            flex items-center justify-center shadow-lg border border-white/60 
-                                                                            transform transition-all duration-300 flex-col
-                                                                            ${isRolling ? 'animate-rolling blur-[0.5px] opacity-70' : 'bounce-in'}
-                                                                            h-[85%] w-full
-                                                                        `}>
+                                                                        <div key={idx} className={`bg-gradient-to-b from-amber-300 to-amber-500 text-red-900 font-black rounded-xl flex items-center justify-center shadow-lg border border-white/60 transform transition-all duration-300 flex-col ${isRolling ? 'animate-rolling blur-[0.5px] opacity-70' : 'bounce-in'} h-[85%] w-full`}>
                                                                             {!isRolling && isMajor ? (
                                                                                 <React.Fragment>
                                                                                     <div className="text-[8px] lg:text-[10px] opacity-60 mb-0.5 leading-none">#{id}</div>
@@ -611,15 +607,15 @@
                         </div>
                     </footer>
 
-                    {/* 大獎密碼驗證視窗 (z-200) */}
+                    {/* 解鎖大獎專區密碼驗證 (z-200) */}
                     {showPasswordModal && (
                         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
                             <div className={`bg-white rounded-[30px] w-full max-w-sm p-8 text-center shadow-2xl ${isPasswordError ? 'shake-horizontal' : 'animate-in zoom-in'}`}>
-                                <div className="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 shadow-inner">
-                                    <Icon name="shield-check" size={32} />
+                                <div className="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-amber-600 shadow-inner">
+                                    <Icon name="lock" size={32} />
                                 </div>
-                                <h4 className="text-xl font-black mb-2 text-red-900">大獎權限驗證</h4>
-                                <p className="text-gray-500 text-xs mb-6 font-bold uppercase tracking-widest">抽獎項目：{prizes.find(p => p.id === selectedPrizeId)?.name}</p>
+                                <h4 className="text-xl font-black mb-2 text-red-900">進入大獎專區</h4>
+                                <p className="text-gray-500 text-xs mb-6 font-bold uppercase tracking-widest leading-relaxed">此區域包含頭獎至六獎<br/>請輸入管理員授權密碼以開啟</p>
                                 <input 
                                     type="password" 
                                     value={passwordInput}
@@ -627,36 +623,13 @@
                                     placeholder="請輸入授權密碼"
                                     autoFocus
                                     className={`w-full bg-gray-100 border-2 rounded-2xl py-4 text-center text-2xl font-black outline-none transition-all ${isPasswordError ? 'border-red-500 text-red-500 bg-red-50' : 'border-transparent focus:border-amber-500'}`}
+                                    onKeyDown={(e) => e.key === 'Enter' && handlePasswordConfirm()}
                                 />
-                                {isPasswordError && <p className="text-red-500 text-[10px] mt-2 font-bold animate-pulse tracking-wide">密碼不正確，請重新輸入</p>}
+                                {isPasswordError && <p className="text-red-500 text-[10px] mt-2 font-bold animate-pulse tracking-wide">密碼不正確</p>}
                                 <div className="grid grid-cols-2 gap-3 mt-8">
-                                    <button onClick={() => setShowPasswordModal(false)} className="bg-gray-100 text-gray-400 py-3 rounded-xl font-black text-sm active:scale-95">取消操作</button>
+                                    <button onClick={() => setShowPasswordModal(false)} className="bg-gray-100 text-gray-400 py-3 rounded-xl font-black text-sm active:scale-95">取消</button>
                                     <button onClick={handlePasswordConfirm} className="bg-red-700 text-white py-3 rounded-xl font-black text-sm shadow-lg shadow-red-200 active:scale-95">確認授權</button>
                                 </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {showInstallPrompt && (
-                        <div className="fixed inset-0 z-[100] flex items-end lg:items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-                            <div className="bg-white rounded-t-[30px] lg:rounded-[30px] w-full max-w-md p-6 text-gray-900 shadow-2xl animate-in slide-in-from-bottom duration-500">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="bg-amber-100 p-3 rounded-2xl"><Icon name="mobile" size={32} className="text-amber-600" /></div>
-                                    <button onClick={() => setShowInstallPrompt(false)} className="text-gray-400"><Icon name="x" size={24} /></button>
-                                </div>
-                                <h4 className="text-xl font-black mb-2 text-red-900 tracking-tight">將抽獎加入主畫面</h4>
-                                <p className="text-gray-500 text-sm mb-6 leading-relaxed">享受全螢幕體驗並獲得更快的啟動速度。</p>
-                                <div className="space-y-4 mb-8">
-                                    <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                                        <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold">1</div>
-                                        <p className="text-xs font-bold text-gray-700">點擊瀏覽器下方的 <Icon name="share" size={14} className="mx-1 inline"/> 「分享」按鈕</p>
-                                    </div>
-                                    <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                                        <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold">2</div>
-                                        <p className="text-xs font-bold text-gray-700">選擇 <Icon name="plus-square" size={14} className="mx-1 inline"/> 「加入主畫面」</p>
-                                    </div>
-                                </div>
-                                <button onClick={() => setShowInstallPrompt(false)} className="w-full bg-red-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-red-200 transition-transform">我知道了</button>
                             </div>
                         </div>
                     )}
